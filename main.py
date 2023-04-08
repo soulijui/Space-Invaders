@@ -12,7 +12,7 @@ class Player:
 
         self.ship = Gcanv.create_image(50, 550, image=ship_sprite, tag="player_hurtbox")
 
-    def player_collide(self, xt, yt):
+    def player_collide(self, xt, yt):  # check if the player collides with a projectile
         xr = range(self.x - 30, self.x + 32)
         yr = range(550, 585)
         if xt in xr and yt in yr:
@@ -28,7 +28,7 @@ class Enemy_group:
         self.enemy_coord_list = []
         self.armada_dir = 'right'
         y = 0
-        for i in range(32):
+        for i in range(32):  # spawns the armada of enemies
             if i > 1 and (i % 8 == 0):
                 y += 1
             enemy = Gcanv.create_image(50 + ((i % 8) * 100), 100 + (y * 70), image=enemy_sprite, tag="enemy_hurtbox")
@@ -89,7 +89,7 @@ def shoot(Player, Bullet):
 
 
 def on_keypress(event):
-    global direction
+    global direction  # controls the direction of the ship
 
     if event.keysym == "Right" or event.keysym == "d":
         direction = "right"
@@ -103,11 +103,12 @@ def on_keyrelease(event):
 
 
 def game_over(WoL):
-    global rof, life, score
-    life = 3
+    global rof, life, score, final_score  # triggered when player loses all lives
+    life = 3                   # or shoots down all enemies
     rof = 100
+    score =0
     Sc.config(text="Score:{}                Life:{}" \
-              .format(score, "O"))
+              .format(final_score, "O"))
     window.bind("<s>", lambda e: boundary_of_life_and_death())
     if WoL:
         col = "green"
@@ -115,7 +116,7 @@ def game_over(WoL):
     else:
         col = "red"
         gametext = "YOU LOST..."
-        score = 0
+        final_score = 0
     Gcanv.delete(ALL)
     Gcanv.create_text(Gcanv.winfo_width() / 2, Gcanv.winfo_height() / 2 - 100,
                       font=('consolas', 70), text="GAME OVER\n {}".format(gametext), fill=col, tag="gameover")
@@ -123,9 +124,9 @@ def game_over(WoL):
                       font=('consolas', 70), text="Press S to retry", fill=col)
 
 
-def nextmove(Player, Bullet, Enemy_group):
+def nextmove(Player, Bullet, Enemy_group):      #function for the main animation of the program
     global direction
-    global score, rof, life
+    global score, rof, life, final_score
     Gcanv.delete(Player.ship)
     del Player.ship
 
@@ -134,18 +135,18 @@ def nextmove(Player, Bullet, Enemy_group):
         return
 
     rof -= 1
-    if rof <= 0:
+    if rof <= 0:       #sets a random enemy to fire a bullet
         enemy_fire = random.randrange(len(Enemy_group.enemy_list))
         Enemy_group.enemy_fire(Bullet, enemy_fire)
         sc_dif = score * 5
         rof = 100 - sc_dif
 
-    projectile_up = lambda data: (data[0], data[1] - 7)  # set projectile speed
-    projectile_down = lambda data: (data[0], data[1] + 3)
+    projectile_up = lambda data: (data[0], data[1] - 7)  # set projectile speed of all projectiles
+    projectile_down = lambda data: (data[0], data[1] + 3) #then assigns all projectiles to a new coordinate
     Bullet.projectile_list = list(map(projectile_up, Bullet.projectile_list))
     Bullet.enem_projectile_list = list(map(projectile_down, Bullet.enem_projectile_list))
 
-    sc_panic = 1
+    sc_panic = 1        #sets the speed of the enemies based on the amount of enemies the player shot down
     if score >= 27:
         sc_panic = 10
     elif score >= 24:
@@ -156,15 +157,15 @@ def nextmove(Player, Bullet, Enemy_group):
         sc_panic = 2
     Enemy_group.armada_sway(sc_panic)
 
-    for i in Enemy_group.enemy_list:  # the for loops for bullet animation
-        Gcanv.delete(i)
+    for i in Enemy_group.enemy_list:  # first loop is for removing the previous images of enemies
+        Gcanv.delete(i)               #second loop is creating the new image based on the new coordinates
     Enemy_group.enemy_list = []
 
     for xe, ye, _, _ in Enemy_group.enemy_coord_list:
         new_enemy = Gcanv.create_image(xe + 30, ye, image=enemy_sprite, tag="enemy_hurtbox")
         Enemy_group.enemy_list.append(new_enemy)
 
-    for i in Bullet.projectile_shape_list:  # the for loops for bullet animation
+    for i in Bullet.projectile_shape_list:  # the for loops for player bullet animation
         Gcanv.delete(i)
     Bullet.projectile_shape_list = []
 
@@ -173,19 +174,20 @@ def nextmove(Player, Bullet, Enemy_group):
         proj = Gcanv.create_image(x, y, image=pellet, tag="bullet")
         Bullet.projectile_shape_list.insert(0, proj)
         check_hit = Enemy_group.enemy_collide(x, y)
-        if check_hit != None:
+        if check_hit != None:       #checks collision on any of the enemies
             del Bullet.projectile_list[i]
             del Enemy_group.enemy_coord_list[check_hit]
             Gcanv.delete(Enemy_group.enemy_list[check_hit])
             del Enemy_group.enemy_list[check_hit]
             score += 1
+            final_score+= 1
             Sc.config(text="Score:{}                Life:{}" \
-                      .format(score, life))
+                      .format(final_score, life))
         if y <= 0:
             del Bullet.projectile_list[i]
         i += 1
 
-    for j in Bullet.enem_projectile_shape_list:  # the for loops for bullet animation
+    for j in Bullet.enem_projectile_shape_list:  # the for loops for enemy bullet animation
         Gcanv.delete(j)
     Bullet.enem_projectile_shape_list = []
 
@@ -194,17 +196,18 @@ def nextmove(Player, Bullet, Enemy_group):
         proj = Gcanv.create_image(a, b, image=pellet, tag="enemy_bullet")
         Bullet.enem_projectile_shape_list.insert(0, proj)
         check_hit_player = Player.player_collide(a, b)
-        if check_hit_player == True:
+        if check_hit_player == True:        #checks collision on the player ship
             del Bullet.enem_projectile_list[j]
             life -= 1
             Sc.config(text="Score:{}                Life:{}" \
-                      .format(score, life))
+                      .format(final_score, life))
 
         if b >= 600:
             del Bullet.enem_projectile_list[j]
         j += 1
 
     if direction == "left" and not (Player.x <= 50):
+    if direction == "left" and not (Player.x <= 50):        #animates the movement of the ship
         Player.x -= 10
     if direction == "right" and not (Player.x >= 950):
         Player.x += 10
@@ -220,7 +223,7 @@ def boundary_of_life_and_death():
     Gcanv.delete(ALL)
     window.unbind("<s>")
     Sc.config(text="Score:{}                Life:{}" \
-              .format(score, life))
+              .format(final_score, life))
 
     p1 = Player()
     bullet_data = Bullet()
@@ -242,7 +245,7 @@ ship_sprite = PhotoImage(file='main_char_sprite.png')
 pellet = PhotoImage(file='pellet.png')
 enemy_sprite = PhotoImage(file='enemy_sprite.png')
 
-score = 0
+score=final_score = 0
 life = 3
 rof = 100
 Sc = Label(window, text="Score:{}                Life:{}" \
